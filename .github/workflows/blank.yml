@@ -1,0 +1,48 @@
+name: Build Minecraft Mod From Zip
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Unzip Source Files
+        run: |
+          unzip surfacemap.zip -d .
+          if [ -d "surfacemap" ]; then
+            mv surfacemap/* . 2>/dev/null || true
+          fi
+
+      - name: Fix Gradle Properties
+        run: |
+          sed -i 's/loom_version=FILL_ME_IN/loom_version=1.6-SNAPSHOT/g' gradle.properties
+          sed -i 's/fabric_api_version=FILL_ME_IN/fabric_api_version=0.100.0+1.26.2/g' gradle.properties
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Mod with Gradle
+        run: |
+          chmod +x gradlew 2>/dev/null || true
+          if [ -f "gradlew" ]; then
+            ./gradlew build
+          else
+            gradle build
+          fi
+
+      - name: Upload Finished Mod File
+        uses: actions/upload-artifact@v4
+        with:
+          name: surfacemap-jar-file
+          path: build/libs/*.jar
